@@ -72,22 +72,22 @@ module Podio
       @oauth_token
     end
 
-    def authenticate_with_second_factor(nonce, secondFactor, useRecoverycode)
-      if useRecoverycode == "false"
-        body = {:nonce => nonce, :otp => secondFactor}
-      else
-        body = {:nonce => nonce, :recoveryCode => secondFactor}
-      end
-
-      response = @oauth_connection.post do |req|
-        req.url '/mfa/verify'
-        req.body = body
-      end
-  
-      @oauth_token = OAuthToken.new(response.body)
-      configure_oauth
-      @oauth_token
-    end
+    # def authenticate_with_second_factor(nonce, secondFactor, useRecoverycode)
+    #   if useRecoverycode == "false"
+    #     body = {:nonce => nonce, :otp => secondFactor}
+    #   else
+    #     body = {:nonce => nonce, :recoveryCode => secondFactor}
+    #   end
+    #
+    #   response = @oauth_connection.post do |req|
+    #     req.url '/mfa/verify'
+    #     req.body = body
+    #   end
+    #
+    #   @oauth_token = OAuthToken.new(response.body)
+    #   configure_oauth
+    #   @oauth_token
+    # end
 
     # Sign in as an app
     def authenticate_with_app(app_id, app_token)
@@ -95,19 +95,6 @@ module Podio
         req.url '/oauth/token'
         req.headers['Content-Type'] = 'application/x-www-form-urlencoded'
         req.body = {:grant_type => 'app', :client_id => api_key, :client_secret => api_secret, :app_id => app_id, :app_token => app_token}
-      end
-
-      @oauth_token = OAuthToken.new(response.body)
-      configure_oauth
-      @oauth_token
-    end
-
-    # Sign in with an transfer token, only available for Podio
-    def authenticate_with_transfer_token(transfer_token)
-      response = @oauth_connection.post do |req|
-        req.url '/oauth/token'
-        req.headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        req.body = {:grant_type => 'transfer_token', :client_id => api_key, :client_secret => api_secret, :transfer_token => transfer_token}
       end
 
       @oauth_token = OAuthToken.new(response.body)
@@ -125,32 +112,6 @@ module Podio
       @oauth_token = OAuthToken.new(response.body)
       configure_oauth
       [@oauth_token, response.body['new_user_created']]
-    end
-
-    # Sign in with an OpenID, only available for Podio
-    def authenticate_with_openid(identifier, type)
-      response = @trusted_connection.post do |req|
-        req.url '/oauth/token_by_openid'
-        req.headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        req.body = {:grant_type => type, :client_id => api_key, :client_secret => api_secret, :identifier => identifier}
-      end
-
-      @oauth_token = OAuthToken.new(response.body)
-      configure_oauth
-      @oauth_token
-    end
-
-    # Sign in with an activation code, only available for Podio
-    def authenticate_with_activation_code(activation_code)
-      response = @oauth_connection.post do |req|
-        req.url '/oauth/token'
-        req.headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        req.body = {:grant_type => 'activation_code', :client_id => api_key, :client_secret => api_secret, :activation_code => activation_code}
-      end
-
-      @oauth_token = OAuthToken.new(response.body)
-      configure_oauth
-      @oauth_token
     end
 
     # reconfigure the client with a different access token
@@ -185,10 +146,11 @@ module Podio
       if oauth_token
         # if we have a token, set up Oauth2
         headers['authorization'] = "OAuth2 #{oauth_token.access_token}"
-      elsif api_key && api_secret
-        # if we have an auth_client, set up public authentication (only works with trusted auth clients)
-        headers['authorization'] = Faraday::Request::BasicAuthentication.header(api_key, api_secret)
       end
+      # elsif api_key && api_secret
+      #   # if we have an auth_client, set up public authentication (only works with trusted auth clients)
+      #   headers['authorization'] = Faraday::Request::Authorization.header_from(:basic, params: [api_key, api_secret])
+      # end
 
       headers
     end
@@ -202,18 +164,22 @@ module Podio
     end
 
     def configure_connection
-      Faraday::Connection.new(:url => api_url, :headers => configured_headers, :request => @request_options) do |builder|
-        builder.use Middleware::JsonRequest
-        builder.use Faraday::Request::Multipart
-        builder.use Faraday::Request::UrlEncoded
-        builder.use Middleware::OAuth2, :podio_client => self
-        builder.use Middleware::Logger, :podio_client => self
+      Faraday::new(api_url,{:headers => configured_headers, :request => @request_options}) do |conn|
+        conn.use Middleware::JsonRequest
+        conn.request :multipart
+        conn.use Faraday::Request::UrlEncoded
+        conn.use Middleware::OAuth2, :podio_client => self
+        conn.use Middleware::Logger, :podio_client => self
 
-        builder.adapter(*default_adapter)
+        if api_key && api_secret
+          conn.request :authorization, :basic, api_key, api_secret
+        end
+
+        conn.adapter *default_adapter
 
         # first response middleware defined get's executed last
-        builder.use Middleware::ErrorResponse
-        builder.use Middleware::JsonResponse
+        conn.use Middleware::ErrorResponse
+        conn.use Middleware::JsonResponse
       end
     end
 
@@ -233,7 +199,7 @@ module Podio
       conn = @connection.dup
       conn.options.update(@request_options)
       conn.headers.delete('authorization')
-      conn.basic_auth(api_key, api_secret)
+      conn.use Faraday::Request::Authorization, :basic, api_key, api_secret
       conn
     end
 

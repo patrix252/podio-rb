@@ -3,7 +3,7 @@
 #
 module Podio
   module Middleware
-    class JsonResponse < Faraday::Response::Middleware
+    class JsonResponse < Faraday::Middleware
       require 'multi_json'
 
       def on_complete(env)

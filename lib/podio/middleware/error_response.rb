@@ -2,7 +2,7 @@
 #
 module Podio
   module Middleware
-    class ErrorResponse < Faraday::Response::Middleware
+    class ErrorResponse < Faraday::Middleware
       def on_complete(env)
         error_class = case env[:status]
           when 200, 201, 204

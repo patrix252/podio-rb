@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class ClientTest < Test::Unit::TestCase
+class ClientTest < Minitest::Test
   test 'should setup client' do
     Podio.setup(:api_key => 'client_id', :api_secret => 'client_secret')
   
@@ -47,8 +47,8 @@ class ClientTest < Test::Unit::TestCase
     user = fixtures[:users][:professor]
     client.authenticate_with_credentials(user[:mail], user[:password])
   
-    assert_not_nil client.oauth_token.access_token
-    assert_not_nil client.oauth_token.refresh_token
+    assert client.oauth_token.access_token != nil
+    assert client.oauth_token.refresh_token != nil
   end
 
   test 'should be able to refresh access token' do
@@ -62,7 +62,7 @@ class ClientTest < Test::Unit::TestCase
 
     client.refresh_access_token
 
-    assert_not_equal old_token.access_token, client.oauth_token.access_token
+    assert old_token.access_token != client.oauth_token.access_token
     assert_equal old_token.refresh_token, client.oauth_token.refresh_token
   end
 
@@ -74,10 +74,8 @@ class ClientTest < Test::Unit::TestCase
 
     Podio.client.stubs.get('/org/') {[200, {}, [{"status" => "active"}]]}
 
-    assert_nothing_raised do
-      response = Podio.connection.get("/org/")
-      assert_equal 200, response.status
-    end
+    response = Podio.connection.get("/org/")
+    assert_equal 200, response.status
   end
 
   test 'setting the oauth_token should reconfigure the connection' do
