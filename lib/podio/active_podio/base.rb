@@ -36,7 +36,7 @@ module ActivePodio
 
             # Initialize nested object to get correctly casted values set back, unless the given values are all blank
             if is_association_hash
-              # Merge existing values with given values and do recursive initalize call to get values casted correctly
+              # Merge existing values with given values and do recursive initialize call to get values casted correctly
               if self.send(key.to_sym).present?
                 existing_attributes = self.send(key.to_sym).try(:attributes) || {}
                 value.reverse_merge!(existing_attributes)
@@ -160,7 +160,7 @@ module ActivePodio
         end
 
         raise "Missing class name of associated model. Provide with :class => 'MyClass'." unless klass_name.present?
-        return self.class.klass_from_string(klass_name)
+        self.class.klass_from_string(klass_name)
       end
 
       def any_values_present_recursive?(values)
@@ -325,7 +325,7 @@ module ActivePodio
       def klass_from_string(klass_name)
         klass = klass_name.constantize rescue nil
         klass = "Podio::#{klass_name}".constantize unless klass.respond_to?(:ancestors) && klass.ancestors.include?(ActivePodio::Base)
-        return klass
+        klass
       end
 
       private
@@ -333,13 +333,13 @@ module ActivePodio
         def define_generic_accessor(name, options = {})
           options.reverse_merge!(:getter => true, :setter => true)
 
-          if(options[:getter])
+          if options[:getter]
             self.send(:define_method, name) do
               self[name.to_sym]
             end
           end
 
-          if(options[:setter])
+          if options[:setter]
             self.send(:define_method, "#{name}=") do |value|
               self[name.to_sym] = value
             end
@@ -368,9 +368,9 @@ module ActivePodio
             end
 
             self[name.to_sym] = if value.is_a?(DateTime)
-              value.try(:to_s, :db)
+              value.try(:to_fs, :db)
             else
-              value.try(:to_s).try(:presence)
+              value.try(:to_fs).try(:presence)
             end
           end
         end
@@ -382,7 +382,7 @@ module ActivePodio
 
           self.send(:define_method, "#{name}=") do |value|
             self[name.to_sym] = if value.is_a?(Date)
-              value.try(:to_s, :db)
+              value.try(:to_fs, :db)
             else
               value = value.try(:to_s)
               if defined?(I18n) && value.present? && !(value =~ /^\d{4}-\d{2}-\d{2}$/) # If we have I18n available, assume that we are in Rails and try to convert the string to a date to convert it to ISO 8601
