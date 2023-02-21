@@ -72,42 +72,12 @@ module Podio
       @oauth_token
     end
 
-    def authenticate_with_second_factor(nonce, secondFactor, useRecoverycode)
-      if useRecoverycode == "false"
-        body = {:nonce => nonce, :otp => secondFactor}
-      else
-        body = {:nonce => nonce, :recoveryCode => secondFactor}
-      end
-
-      response = @oauth_connection.post do |req|
-        req.url '/mfa/verify'
-        req.body = body
-      end
-  
-      @oauth_token = OAuthToken.new(response.body)
-      configure_oauth
-      @oauth_token
-    end
-
     # Sign in as an app
     def authenticate_with_app(app_id, app_token)
       response = @oauth_connection.post do |req|
         req.url '/oauth/token'
         req.headers['Content-Type'] = 'application/x-www-form-urlencoded'
         req.body = {:grant_type => 'app', :client_id => api_key, :client_secret => api_secret, :app_id => app_id, :app_token => app_token}
-      end
-
-      @oauth_token = OAuthToken.new(response.body)
-      configure_oauth
-      @oauth_token
-    end
-
-    # Sign in with an transfer token, only available for Podio
-    def authenticate_with_transfer_token(transfer_token)
-      response = @oauth_connection.post do |req|
-        req.url '/oauth/token'
-        req.headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        req.body = {:grant_type => 'transfer_token', :client_id => api_key, :client_secret => api_secret, :transfer_token => transfer_token}
       end
 
       @oauth_token = OAuthToken.new(response.body)
@@ -125,32 +95,6 @@ module Podio
       @oauth_token = OAuthToken.new(response.body)
       configure_oauth
       [@oauth_token, response.body['new_user_created']]
-    end
-
-    # Sign in with an OpenID, only available for Podio
-    def authenticate_with_openid(identifier, type)
-      response = @trusted_connection.post do |req|
-        req.url '/oauth/token_by_openid'
-        req.headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        req.body = {:grant_type => type, :client_id => api_key, :client_secret => api_secret, :identifier => identifier}
-      end
-
-      @oauth_token = OAuthToken.new(response.body)
-      configure_oauth
-      @oauth_token
-    end
-
-    # Sign in with an activation code, only available for Podio
-    def authenticate_with_activation_code(activation_code)
-      response = @oauth_connection.post do |req|
-        req.url '/oauth/token'
-        req.headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        req.body = {:grant_type => 'activation_code', :client_id => api_key, :client_secret => api_secret, :activation_code => activation_code}
-      end
-
-      @oauth_token = OAuthToken.new(response.body)
-      configure_oauth
-      @oauth_token
     end
 
     # reconfigure the client with a different access token
