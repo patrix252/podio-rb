@@ -129,9 +129,6 @@ module Podio
       if oauth_token
         # if we have a token, set up Oauth2
         headers['authorization'] = "OAuth2 #{oauth_token.access_token}"
-      elsif api_key && api_secret
-        # if we have an auth_client, set up public authentication (only works with trusted auth clients)
-        headers['authorization'] = Faraday::Request::BasicAuthentication.header(api_key, api_secret)
       end
 
       headers
@@ -146,18 +143,22 @@ module Podio
     end
 
     def configure_connection
-      Faraday::Connection.new(:url => api_url, :headers => configured_headers, :request => @request_options) do |builder|
-        builder.use Middleware::JsonRequest
-        builder.use Faraday::Request::Multipart
-        builder.use Faraday::Request::UrlEncoded
-        builder.use Middleware::OAuth2, :podio_client => self
-        builder.use Middleware::Logger, :podio_client => self
+      Faraday::new(api_url,{:headers => configured_headers, :request => @request_options}) do |conn|
+        conn.use Middleware::JsonRequest
+        conn.request :multipart
+        conn.use Faraday::Request::UrlEncoded
+        conn.use Middleware::OAuth2, :podio_client => self
+        conn.use Middleware::Logger, :podio_client => self
 
-        builder.adapter(*default_adapter)
+        if api_key && api_secret
+          conn.request :authorization, :basic, api_key, api_secret
+        end
 
-        # first response middleware defined get's executed last
-        builder.use Middleware::ErrorResponse
-        builder.use Middleware::JsonResponse
+        conn.adapter *default_adapter
+
+        # first response middleware defined gets executed last
+        conn.use Middleware::ErrorResponse
+        conn.use Middleware::JsonResponse
       end
     end
 
@@ -177,7 +178,7 @@ module Podio
       conn = @connection.dup
       conn.options.update(@request_options)
       conn.headers.delete('authorization')
-      conn.basic_auth(api_key, api_secret)
+      conn.use Faraday::Request::Authorization, :basic, api_key, api_secret
       conn
     end
 

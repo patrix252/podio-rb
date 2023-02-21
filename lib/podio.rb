@@ -1,4 +1,5 @@
 require 'faraday'
+require 'faraday/multipart'
 require 'active_support'
 require 'active_support/core_ext'
 
