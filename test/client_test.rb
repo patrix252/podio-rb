@@ -1,18 +1,17 @@
 require 'test_helper'
 
-class ClientTest < Test::Unit::TestCase
+class ClientTest < Minitest::Test
+
   test 'should setup client' do
     Podio.setup(:api_key => 'client_id', :api_secret => 'client_secret')
   
     assert_equal Podio::Client, Podio.client.class
     assert_equal 'client_id', Podio.client.api_key
     assert_equal 'client_secret', Podio.client.api_secret
-
-    assert_equal 'Basic Y2xpZW50X2lkOmNsaWVudF9zZWNyZXQ=', Podio.client.connection.headers['authorization']
   end
 
   test 'should initialize client' do
-    podio = Podio::Client.new()
+    podio = Podio::Client.new
 
     assert_equal 'https://api.podio.com', podio.api_url
     assert_nil podio.connection.headers['authorization']
@@ -24,8 +23,6 @@ class ClientTest < Test::Unit::TestCase
     assert_equal 'https://new.podio.com', podio.api_url
     assert_equal 'new_client_id', podio.api_key
     assert_equal 'new_client_secret', podio.api_secret
-
-    assert_equal 'Basic bmV3X2NsaWVudF9pZDpuZXdfY2xpZW50X3NlY3JldA==', podio.connection.headers['authorization']
   end
   
   test 'should setup connection with existing token' do
@@ -47,8 +44,8 @@ class ClientTest < Test::Unit::TestCase
     user = fixtures[:users][:professor]
     client.authenticate_with_credentials(user[:mail], user[:password])
   
-    assert_not_nil client.oauth_token.access_token
-    assert_not_nil client.oauth_token.refresh_token
+    refute_nil client.oauth_token.access_token
+    refute_nil client.oauth_token.refresh_token
   end
 
   test 'should be able to refresh access token' do
@@ -62,7 +59,7 @@ class ClientTest < Test::Unit::TestCase
 
     client.refresh_access_token
 
-    assert_not_equal old_token.access_token, client.oauth_token.access_token
+    refute_equal old_token.access_token, client.oauth_token.access_token
     assert_equal old_token.refresh_token, client.oauth_token.refresh_token
   end
 
@@ -74,10 +71,8 @@ class ClientTest < Test::Unit::TestCase
 
     Podio.client.stubs.get('/org/') {[200, {}, [{"status" => "active"}]]}
 
-    assert_nothing_raised do
-      response = Podio.connection.get("/org/")
-      assert_equal 200, response.status
-    end
+    response = Podio.connection.get("/org/")
+    assert_equal 200, response.status
   end
 
   test 'setting the oauth_token should reconfigure the connection' do

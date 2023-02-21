@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class ModelsSanityTest < Test::Unit::TestCase
+class ModelsSanityTest < Minitest::Test
 
   ActiveSupport::Inflector.inflections do |inflect|
     inflect.uncountable %w( status user_status via )
@@ -14,7 +14,7 @@ class ModelsSanityTest < Test::Unit::TestCase
     
     if model_class
       test "should instansiate #{model_class.name}" do
-        assert_nothing_raised { model_class.new }
+        model_class.new
       end
     end
   end
