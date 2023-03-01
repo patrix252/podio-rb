@@ -114,4 +114,16 @@ class ClientTest < Minitest::Test
     puts "#{response.body.class}"
     assert response.body.is_a?(String)
   end
+
+  test 'should set last rate-limit status' do
+    login_as(:professor)
+
+    Podio.client.stubs.get('/org/') {[200, {'X-Rate-Limit-Limit': 1000,
+                                            'X-Rate-Limit-Remaining': 50}, [{"status" => "active"}]]}
+
+    Podio.connection.get("/org/")
+
+    assert_equal 1000, Podio.client.rate_limit
+    assert_equal 50, Podio.client.rate_remaining
+  end
 end
